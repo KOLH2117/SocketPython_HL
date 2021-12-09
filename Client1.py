@@ -87,6 +87,64 @@ def getPhoneBookList(window, phoneBook_tree):
                                   values=(record[0], record[1], record[2], record[3], record[4]), tags=('oddrow',))
         cnt += 1
 
+def SearchMembers(ID):
+    sub_window = tk.Toplevel()
+    sub_window.geometry('400x450')
+    sub_window.title("Look Up A Member")
+    sub_window.resizable(0, 0)
+
+    Frame = tk.Frame(sub_window, bg="white").place(x=0, y=0, width=500, height=500)
+    Banner = tk.Frame(sub_window, bg="lightblue").place(x=0, y=0, width=500, height=150)
+    Avatar_frame = tk.Frame(sub_window, bg="grey", highlightthickness=10).place(x=90, y=40, width=170, height=170)
+
+    #Get member from ID
+    c.sendall(bytes("Search", "utf8")) #Send Command 'Search'
+    c.sendall(bytes(ID, "utf8"))       #Send ID(from Search entry)
+
+    checkID_existed = c.recv(1024).decode("utf8")
+    if(checkID_existed == "Found"):
+        # Recieve Info
+        member = []
+        member = pickle.loads(c.recv(1024))
+        #Recieve Avatar
+        c.sendall(bytes("SendAvatarWithID", "utf8"))  # Send Command 'Search'
+        c.sendall(bytes(ID, "utf8"))  # Send ID(from Search entry)
+        buf = recvImagesFromServer()
+        #Show on GUI
+        Avatar = Image.open(io.BytesIO(buf))
+        resized_Avatar = Avatar.resize((185, 170), Image.ANTIALIAS)
+        sub_window.Avatar_obj = ImageTk.PhotoImage(resized_Avatar)
+        showAvatar = tk.Button(sub_window, image=sub_window.Avatar_obj, bd=0, command=lambda: Avatar.show()).place(x=110,
+                                                                                                                   y=60)
+        def do_popup(event):
+            try:
+                menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                menu.grab_release()
+        #Save Avatar choice
+        menu = tk.Menu(sub_window, tearoff=0)
+        menu.add_command(label="Save As",
+                         command=lambda: [Avatar.save(filedialog.asksaveasfilename(initialdir="/C", title="Save Avatar")),
+                                          Avatar.show()])
+        sub_window.bind("<Button-3>", do_popup)
+
+        # ID
+        ID = tk.Label(sub_window, text="ID : " + ID, font=("Helvetica", "10", "bold"), bg="white").place(x=70, y=270)
+        # Name
+        Name = tk.Label(sub_window, text="Full Name : " + member[0] + ' ' + member[1], font=("Helvetica", "10", "bold")
+                        , bg="white").place(x=70, y=300)
+        # Email
+        Email = tk.Label(sub_window, text="Email : " + member[2], font=("Helvetica", "10", "bold"), bg="white").place(x=70,
+                                                                                                                      y=330)
+        # phoneNumber
+        phoneNum = tk.Label(sub_window, text="Phone Number : " + member[3], font=("Helvetica", "10", "bold"),
+                                                                                             bg="white").place(x=70, y=360)
+    else:
+        sub_window.destroy()
+        drawLine(780, 260, 150, None, "red")
+        messagebox.showerror("Oops", "This member doesn't exist")
+        drawLine(780, 260, 150, None, "black")
+
 def sendImageToServer(filename):
     file_size = os.path.getsize(filename)  # get image's size
     image = open(filename, "rb")
@@ -692,12 +750,23 @@ def phoneBook_GUI(window, username):
     window.Avatar_obj = ImageTk.PhotoImage(Avatar)
     showAvatar = tk.Label(image=window.Avatar_obj).place(x=774, y=20)
 
-    #ID = "20127459"
     showUsername = tk.Label(window,text=username,font=("Helvetica","11","bold"),fg="#347083",bg="white").place(x=775,y=150)
     showId = tk.Label(window,text='#'+ID,font=("Helvetica","9",'bold'),fg="black",bg="white").place(x=775,y=170)
 
     #Bind The Treeview - detect user select record
     phoneBook_tree.bind("<ButtonRelease-1>", lambda e:SelectRecord(phoneBook_tree))
+
+    # Search Member Entry
+    member_ID = tk.StringVar()
+    search_label = tk.Label(text="Search", font=("Poppins-Regular", 12, "bold", "italic"), bd=0, bg="white").place(x=780, y=210)
+    Search_entry = tk.Entry(font=("Poppins-Regular", 11, "bold"), bg="white", textvariable=member_ID, bd=0)
+    Search_entry.place(x=780, y=240, width=120)
+    drawLine(780, 260, 150, None, "black")
+
+    Search_btnImg = Image.open("images/search_icon.jpg") #Search button
+    Search_btnImg = Search_btnImg.resize((27, 27), Image.ANTIALIAS)  # resize the image
+    window.Search_btn = ImageTk.PhotoImage(Search_btnImg)
+    set_btn = tk.Button(image=window.Search_btn, command=lambda: SearchMembers(member_ID.get()), bd=0,bg="white").place(x=898,y=228)
 
     #Buttons
     #View

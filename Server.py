@@ -84,6 +84,16 @@ def SendPersonalInfo(c, cur):
     c.send(Avatar)
     print("Done")
 
+def SendMemberThatBeingSearched(c, cur):
+    ID = c.recv(1024).decode("utf8")
+    member = cur.execute("SELECT firstName, lastName, email, phoneNumber FROM members WHERE ID == :ID", {'ID': ID}).fetchone()
+    if member == None:
+        c.sendall(bytes("non-existed", "utf8"))
+    else:
+        c.sendall(bytes("Found", "utf8"))
+        send_data = pickle.dumps(member)
+        c.send(send_data)
+
 def SendAvatarFromID(c, cur):
     ID = c.recv(1024).decode("utf8")
     getAvatar = cur.execute("SELECT Avatar FROM members WHERE ID == :ID",{'ID': ID}).fetchone()
@@ -187,6 +197,8 @@ def server(c):
                 SendPersonalInfo(c, cur)
             if data == "SendAvatarWithID":
                 SendAvatarFromID(c, cur)
+            if data == "Search":
+                SendMemberThatBeingSearched(c, cur)
     except ConnectionResetError:
         print("Client lost connection")
     except (KeyboardInterrupt, OSError):
